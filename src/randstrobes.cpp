@@ -193,14 +193,14 @@ Randstrobe RandstrobeIterator2::next() {
         assert(i <= w_max);
         // Method 3' skew sample more for prob exact matching
         std::bitset<64> b;
-        b = (strobe1.hash ^ syncmers.at(i).hash) & q;
+        b = (strobe1.hash ^ syncmers[i].hash) & q;
         uint64_t res = b.count();
-        if (syncmers.at(i).position > max_position) {
+        if (syncmers[i].position > max_position) {
             break;
         }
         if (res < min_val) {
             min_val = res;
-            strobe2 = syncmers.at(i);
+            strobe2 = syncmers[i];
         }
     }
     syncmers.pop_front();
