@@ -14,6 +14,7 @@
 #include <iostream>
 #include <thread>
 #include <atomic>
+#include <random>
 #include <hyperloglog/hyperloglog.hpp>
 #include "timer.hpp"
 #include "logger.hpp"
@@ -245,6 +246,8 @@ void StrobemerIndex::populate(float f, size_t n_threads) {
     stats.elapsed_generating_seeds = randstrobes_timer.duration();
 
     Timer sorting_timer;
+    std::mt19937_64 gen64;
+    std::shuffle(ind_flat_vector.begin(), ind_flat_vector.end(), gen64);
     // sort by hash values
     pdqsort_branchless(ind_flat_vector.begin(), ind_flat_vector.end());
     stats.elapsed_sorting_seeds = sorting_timer.duration();
