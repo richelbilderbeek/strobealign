@@ -27,10 +27,10 @@ static inline bool score(const nam &a, const nam &b) {
     return a.score > b.score;
 }
 
-inline aln_info ssw_align(const std::string &ref, const std::string &query, int match_score, int mismatch_penalty, int gap_opening_penalty, int gap_extending_penalty) {
+inline aln_info ssw_align(const std::string_view ref, const std::string_view query, int match_score, int mismatch_penalty, int gap_opening_penalty, int gap_extending_penalty) {
 
     aln_info aln;
-    int32_t maskLen = strlen(query.c_str())/2;
+    int32_t maskLen = query.size() / 2;
     maskLen = std::max(maskLen, 15);
     if (ref.length() > 2000){
 //        std::cerr << "ALIGNMENT TO REF LONGER THAN 2000bp - REPORT TO DEVELOPER. Happened for read: " <<  query << " ref len:" << ref.length() << std::endl;
@@ -47,7 +47,9 @@ inline aln_info ssw_align(const std::string &ref, const std::string &query, int 
     StripedSmithWaterman::Filter filter;
     // Declares an alignment that stores the result
     StripedSmithWaterman::Alignment alignment_ssw;
-    aligner.Align(query.c_str(), ref.c_str(), ref.size(), filter, &alignment_ssw, maskLen, 1);
+    aligner.SetReferenceSequence(ref.begin(), ref.size());
+    std::string query_s{query};
+    aligner.Align(query_s.c_str(), filter, &alignment_ssw, maskLen, 1);
     // Have to give up this optimization untill the 'Command terminated abnormally' bug is fixed in ssw library
 //     if (read_len*match_score < 255){
 //         std::cerr << "Here: "  << read_len*match_score << " " << ref.length() << std::endl;
@@ -449,7 +451,7 @@ inline void output_hits_paf(std::string &paf_output, const std::vector<nam> &all
 }
 
 
-inline int HammingDistance(const std::string &One, const std::string &Two)
+inline int HammingDistance(const std::string_view One, const std::string_view Two)
 {
     if (One.length() != Two.length()){
         return -1;
@@ -465,7 +467,7 @@ inline int HammingDistance(const std::string &One, const std::string &Two)
 }
 
 
-inline int HammingToCigarEQX2(const std::string &One, const std::string &Two, std::stringstream &cigar, int match, int mismatch, int &aln_score, int &soft_left, int &soft_right)
+inline int HammingToCigarEQX2(const std::string_view One, const std::string_view Two, std::stringstream &cigar, int match, int mismatch, int &aln_score, int &soft_left, int &soft_right)
 {
     if (One.length() != Two.length()){
         return -1;
@@ -662,8 +664,7 @@ inline void align_SE(
         int ref_len = references.lengths[n.ref_id];
         int ref_start = std::max(0, ref_tmp_start);
         int ref_segm_size = ref_tmp_segm_size < ref_len - ref_start ? ref_tmp_segm_size : ref_len - 1 - ref_start;
-        std::string ref_segm = references.sequences[n.ref_id].substr(ref_start, ref_segm_size);
-
+        const auto ref_segm = std::string_view{references.sequences[n.ref_id]}.substr(ref_start, ref_segm_size);
         int soft_left = 50;
         int soft_right = 50;
         int hamming_mod;
@@ -741,7 +742,7 @@ inline void align_SE(
             int b = n.ref_e + (read_len - n.query_e)+ extra_ref_right;
             int ref_len = references.lengths[n.ref_id];
             int ref_end = std::min(ref_len, b);
-            ref_segm = references.sequences[n.ref_id].substr(ref_start, ref_end - ref_start);
+            const auto ref_segm = std::string_view{references.sequences[n.ref_id]}.substr(ref_start, ref_end - ref_start);
 //            ksw_extz_t ez;
 //            const char *ref_ptr = ref_segm.c_str();
 //            const char *read_ptr = r_tmp.c_str();
@@ -842,7 +843,7 @@ static inline void align_SE_secondary_hits(
         int ref_start = std::max(ref_tmp_start, 0);
         int ref_segm_size = ref_tmp_segm_size < ref_len - ref_start ? ref_tmp_segm_size : ref_len - 1 - ref_start;
 
-        std::string ref_segm = references.sequences[n.ref_id].substr(ref_start, ref_segm_size);
+        const auto ref_segm = std::string_view{references.sequences[n.ref_id]}.substr(ref_start, ref_segm_size);
 
         int hamming_mod;
         int soft_left = 50;
@@ -918,7 +919,7 @@ static inline void align_SE_secondary_hits(
             int b = n.ref_e + (read_len - n.query_e)+ extra_ref_right;
             int ref_len = references.lengths[n.ref_id];
             int ref_end = std::min(ref_len, b);
-            ref_segm = references.sequences[n.ref_id].substr(ref_start, ref_end - ref_start);
+            const auto ref_segm = std::string_view{references.sequences[n.ref_id]}.substr(ref_start, ref_end - ref_start);
 //            ksw_extz_t ez;
 //            const char *ref_ptr = ref_segm.c_str();
 //            const char *read_ptr = r_tmp.c_str();
@@ -989,8 +990,8 @@ static inline void align_SE_secondary_hits(
 
 static inline void align_segment(
     const alignment_params &aln_params,
-    const std::string &read_segm,
-    const std::string &ref_segm,
+    const std::string_view read_segm,
+    const std::string_view ref_segm,
     int read_segm_len,
     int ref_segm_len,
     int ref_start,
@@ -1008,7 +1009,7 @@ static inline void align_segment(
     int ref_segm_len_ham = ref_segm_len - ext_left - ext_right; // we send in the already extended ref segment to save time. This is not true in center alignment if merged match have diff length
 //    std::cerr << "ref_segm_len_ham: " << ref_segm_len_ham << " read_segm_len: " << read_segm_len << std::endl;
     if ( (ref_segm_len_ham == read_segm_len) && (!aln_did_not_fit) ){
-        std::string ref_segm_ham = ref_segm.substr(ext_left, read_segm_len);
+        const auto ref_segm_ham = ref_segm.substr(ext_left, read_segm_len);
 //        std::cout << "ref_segm_ham " << ref_segm_ham << std::endl;
 
         hamming_dist = HammingDistance(read_segm, ref_segm_ham);
@@ -1092,15 +1093,16 @@ static inline void get_alignment(
         aln_did_not_fit = true;
     }
 
-    std::string r_tmp;
+    std::string r_tmp_s;
     bool is_rc;
     if (n.is_rc){
-        r_tmp = read.rc();
+        r_tmp_s = read.rc();
         is_rc = true;
     }else{
-        r_tmp = read.seq;
+        r_tmp_s = read.seq;
         is_rc = false;
     }
+    const auto r_tmp = std::string_view{r_tmp_s};
 
     int ext_left;
     int ext_right;
@@ -1109,8 +1111,7 @@ static inline void get_alignment(
     size_t ref_segm_size;
     int ref_tmp_start;
     int ref_start;
-    std::string ref_segm;
-    std::string read_segm;
+    std::string_view read_segm;
 
     if (true){ // currently deactivate partial SSW implementation.. (!fits){ // full alignment
         ref_tmp_start = std::max(0, n.ref_s - n.query_s);
@@ -1130,7 +1131,7 @@ static inline void get_alignment(
 //        if (ref_segm_size <= 20){
 //            std::cerr << "Get_alignment Bug3! ref start: " << ref_start << " ref_segm_size: " << ref_segm_size << " ref len:  " << ref_seqs[n.ref_id].length() << std::endl;
 //        }
-        ref_segm = references.sequences[n.ref_id].substr(ref_start, ref_segm_size);
+        const auto ref_segm = std::string_view{references.sequences[n.ref_id]}.substr(ref_start, ref_segm_size);
 //        std::cerr << " ref_tmp_start " << ref_tmp_start << " ext left " << ext_left << " ext right " << ext_right << " ref_tmp_segm_size " << ref_tmp_segm_size << " ref_segm_size " << ref_segm_size << " ref_segm " << ref_segm << std::endl;
         sam_aln.ref_id = n.ref_id;
         align_segment(aln_params, r_tmp, ref_segm, read_len, ref_segm_size, ref_start, ext_left, ext_right, aln_did_not_fit, is_rc, sam_aln, tot_ksw_aligned);
@@ -1551,7 +1552,7 @@ static inline std::vector<std::tuple<int,nam,nam>> get_best_scoring_NAM_location
  * Determine (roughly) whether the read sequence has some l-mer (with l = k*2/3)
  * in common with the reference sequence
  */
-bool has_shared_substring(const std::string& read_seq, const std::string& ref_seq, int k) {
+bool has_shared_substring(const std::string_view read_seq, const std::string_view ref_seq, int k) {
     int sub_size = 2 * k / 3;
     int step_size = k / 3;
     std::string submer;
@@ -1611,7 +1612,7 @@ static inline void rescue_mate(
 //        std::cerr << "RESCUE: Caught Bug3! ref start: " << ref_start << " ref end: " << ref_end << " ref len:  " << ref_len << std::endl;
         return;
     }
-    std::string ref_segm = references.sequences[n.ref_id].substr(ref_start, ref_end - ref_start);
+    const auto ref_segm = std::string_view{references.sequences[n.ref_id]}.substr(ref_start, ref_end - ref_start);
     aln_info info;
 
     if (!has_shared_substring(r_tmp, ref_segm, k)){
@@ -1949,7 +1950,6 @@ inline void align_PE(
     statistics.tot_all_tried ++;
 
 //            int a, b;
-    std::string r_tmp;
 //            int min_ed1, min_ed2 = 1000;
 //            bool new_opt1, new_opt2 = false;
 //            bool a1_is_rc, a2_is_rc;
@@ -2292,7 +2292,6 @@ void align_SE_read(
     const References& references,
     const StrobemerIndex& index
 ) {
-        std::string seq, seq_rc;
         mers_vector_read query_mers; // pos, chr_id, kmer hash value
         std::vector<nam> nams; // (r_id, r_pos_start, r_pos_end, q_pos_start, q_pos_end)
 
