@@ -30,7 +30,7 @@ static inline bool score(const nam &a, const nam &b) {
 inline aln_info ssw_align(const std::string &ref, const std::string &query, int match_score, int mismatch_penalty, int gap_opening_penalty, int gap_extending_penalty) {
 
     aln_info aln;
-    int32_t maskLen = strlen(query.c_str())/2;
+    int32_t maskLen = query.length() / 2;
     maskLen = std::max(maskLen, 15);
     if (ref.length() > 2000){
 //        std::cerr << "ALIGNMENT TO REF LONGER THAN 2000bp - REPORT TO DEVELOPER. Happened for read: " <<  query << " ref len:" << ref.length() << std::endl;
@@ -88,6 +88,16 @@ inline aln_info ssw_align(const std::string &ref, const std::string &query, int 
     aln.cigar = alignment_ssw.cigar_string;
     aln.sw_score = alignment_ssw.sw_score;
     aln.length = alignment_ssw.ref_end - alignment_ssw.ref_begin;
+
+    std::cerr << "ssw\n"
+        << "\n ed=" << aln.ed
+        << "\n global_ed=" << aln.global_ed
+        << "\n ref_offset=" << aln.ref_offset
+        << "\n cigar=" << aln.cigar
+        << "\n sw_score=" << aln.sw_score
+        << "\n length=" << aln.length
+        << "\n";
+
     return aln;
 }
 
@@ -634,11 +644,16 @@ inline void align_SE(
     alignment sam_aln;
     int min_mapq_diff = best_align_dist;
 
+    int nam_x = 0;
+    std::cerr << "NAMs " << all_nams.size() << '\n';
     for (auto &n : all_nams) {
         score_dropoff = (float) n.n_hits / n_max.n_hits;
 //        score_dropoff = (float) n.score / n_max.score;
 
+        std::cerr << "NAM " << nam_x << " cnt=" << cnt << " max_tries=" << max_tries << " best_align_dist=" << best_align_dist << " score_dropoff=" << score_dropoff << " dropoff=" << dropoff << '\n';
+        nam_x++;
         if ( (cnt >= max_tries) || best_align_dist == 0 || score_dropoff < dropoff){ // only consider top 20 hits as minimap2 and break if alignment is exact match to reference or the match below droppoff cutoff.
+            std::cerr << "break\n";
             break;
         }
 
@@ -679,9 +694,11 @@ inline void align_SE(
 //        std::cout << "DIFF: "  <<  diff << ", " << n.score << ", " << ref_segm.length() << std::endl;
 
         if (ref_segm.length() == read_len){
+            std::cerr << "same length\n";
             hamming_dist = HammingDistance(r_tmp, ref_segm);
 //            std::cout << "Hammingdist: " << n.score << ", "  <<  n.n_hits << ", " << n.query_s << ", " << n.query_e << ", " << n.ref_s << ", " << n.ref_e  << ") hd:" << hamming_dist << ", best ed so far: " << best_align_dist  << std::endl;
             if ( (hamming_dist >=0)){
+                std::cerr << "hamming_dist=" << hamming_dist << "\n";
                 int sw_score = aln_params.match*(read_len-hamming_dist) - aln_params.mismatch*hamming_dist;
                 int diff_to_best = std::abs(best_align_sw_score - sw_score);
                 min_mapq_diff = std::min(min_mapq_diff, diff_to_best);
@@ -728,8 +745,9 @@ inline void align_SE(
 //            }
 //            std::cout << "HERE 1 " << sam_aln.ref_start << " " << hamming_dist  << ", " << read_len << ", " << (float) hamming_dist / (float) read_len << std::endl;
 
+            std::cerr << "nothing\n";
         } else {
-
+            std::cerr << "ELSE\n";
 //        } else if ( (best_align_dist > 1) || aln_did_not_fit ){
 //        } else if ( (best_align_dist > 1) || ( aln_did_not_fit || needs_aln || (((float) hamming_dist / (float) read_len) >= 0.05) ) ){
             int extra_ref_left = std::min(soft_left, 50);
@@ -773,6 +791,7 @@ inline void align_SE(
         cnt ++;
     }
 
+    std::cerr << "Read done\n\n";
     if (!all_nams.empty()) {
         sam_aln.mapq = std::min(min_mapq_diff, 60);
         sam.add(sam_aln, record, read.rc);
@@ -811,7 +830,10 @@ static inline void align_SE_secondary_hits(
     int best_align_sw_score = -1000;
 
     int min_mapq_diff = best_align_dist;
+
+
     for (auto &n : all_nams) {
+
         alignment sam_aln;
         sam_aln.ed = 1000; // init
         score_dropoff = (float) n.n_hits / n_max.n_hits;
