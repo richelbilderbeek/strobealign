@@ -87,7 +87,7 @@ inline aln_info ssw_align(const std::string &ref, const std::string &query, int 
     aln.ref_offset = alignment_ssw.ref_begin;
     aln.cigar = alignment_ssw.cigar_string;
     aln.sw_score = alignment_ssw.sw_score;
-    aln.length = alignment_ssw.ref_end - alignment_ssw.ref_begin;
+    aln.length = alignment_ssw.ref_end - alignment_ssw.ref_begin + 1;
     return aln;
 }
 
